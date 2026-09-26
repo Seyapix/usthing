@@ -117,7 +117,7 @@ public class RecurrenceService
 
         var calendarEvent = new CalendarEvent
         {
-            Uid = timetableEvent.ExternalUid ?? timetableEvent.Id.ToString(),
+            Uid = timetableEvent.ExternalUid ?? ExportedUid(timetableEvent.Id),
             Summary = timetableEvent.Title,
             Location = timetableEvent.Location,
             Description = timetableEvent.Description,
@@ -169,6 +169,19 @@ public class RecurrenceService
             endUtc,
             NormalizeRule(rule),
             NormalizeTimeZoneId(start.TzId));
+    }
+
+    public static string ExportedUid(int id) => $"{id}@timetable";
+
+    public static bool TryParseExportedId(string uid, out int id)
+    {
+        const string suffix = "@timetable";
+        if (uid.EndsWith(suffix, StringComparison.Ordinal)
+            && int.TryParse(uid.AsSpan(0, uid.Length - suffix.Length), out id))
+            return id > 0;
+
+        id = 0;
+        return false;
     }
 
     private static DateTime Utc(DateTime value) => DateTime.SpecifyKind(value, DateTimeKind.Utc);

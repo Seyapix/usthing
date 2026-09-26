@@ -14,13 +14,15 @@ public class EventService(TimetableContext context, RecurrenceService recurrence
 
     public async Task<List<EventResponse>> List(int callerId, DateTime? from, DateTime? to)
     {
-        if (from is DateTime windowFrom && to is DateTime windowTo)
-            return await ListOccurrences(callerId, windowFrom, windowTo);
+        var fromUtc = from is DateTime windowFrom ? ToUtc(windowFrom) : (DateTime?)null;
+        var toUtc = to is DateTime windowTo ? ToUtc(windowTo) : (DateTime?)null;
+        if (fromUtc is DateTime rangeFrom && toUtc is DateTime rangeTo)
+            return await ListOccurrences(callerId, rangeFrom, rangeTo);
 
         var query = OwnedBy(callerId).AsNoTracking();
-        if (from is DateTime fromOnly)
+        if (fromUtc is DateTime fromOnly)
             query = query.Where(x => x.EndUtc > fromOnly);
-        if (to is DateTime toOnly)
+        if (toUtc is DateTime toOnly)
             query = query.Where(x => x.StartUtc < toOnly);
 
         var events = await query.OrderBy(x => x.StartUtc).ToListAsync();
@@ -43,8 +45,8 @@ public class EventService(TimetableContext context, RecurrenceService recurrence
             RequiredTitle(request.Title),
             Clean(request.Location),
             Clean(request.Description),
-            request.Start,
-            request.End,
+            ToUtc(request.Start),
+            ToUtc(request.End),
             _recurrence.NormalizeRule(request.RecurrenceRule),
             _recurrence.NormalizeTimeZoneId(request.TimeZoneId));
 
@@ -60,8 +62,8 @@ public class EventService(TimetableContext context, RecurrenceService recurrence
             RequiredTitle(request.Title),
             Clean(request.Location),
             Clean(request.Description),
-            request.Start,
-            request.End,
+            ToUtc(request.Start),
+            ToUtc(request.End),
             _recurrence.NormalizeRule(request.RecurrenceRule),
             _recurrence.NormalizeTimeZoneId(request.TimeZoneId));
 
@@ -118,6 +120,8 @@ public class EventService(TimetableContext context, RecurrenceService recurrence
 
     public async Task<string> Export(int callerId, DateTime from, DateTime to)
     {
+        from = ToUtc(from);
+        to = ToUtc(to);
         _recurrence.EnsureWindow(from, to);
         var events = await InWindow(callerId, from, to).ToListAsync();
         var series = events.Where(timetableEvent => _recurrence.Occurrences(timetableEvent, from, to).Count > 0);
@@ -152,7 +156,7 @@ public class EventService(TimetableContext context, RecurrenceService recurrence
         return timetableEvent;
     }
 
-    // An export of a local event uses the numeric id as the uid until one is stored.
+    // Our own export uses {id}@timetable until a uid is stored. Any other uid is a new event.
     private static TimetableEvent? MatchImport(List<TimetableEvent> owned, string? uid)
     {
         if (string.IsNullOrEmpty(uid))
@@ -162,7 +166,7 @@ public class EventService(TimetableContext context, RecurrenceService recurrence
         if (byUid is not null)
             return byUid;
 
-        if (!int.TryParse(uid, out var id))
+        if (!RecurrenceService.TryParseExportedId(uid, out var id))
             return null;
 
         return owned.FirstOrDefault(x => x.Id == id && x.ExternalUid is null);
@@ -188,7 +192,11 @@ public class EventService(TimetableContext context, RecurrenceService recurrence
         return trimmed;
     }
 
-    private static DateTime Utc(DateTime value) => DateTime.SpecifyKind(value, DateTimeKind.Utc);
+    private static DateTime ToUtc(DateTime value) => value.Kind switch
+    {
+        DateTimeKind.Local => value.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc),
+    };
 
     private static string? Clean(string? value)
     {
@@ -205,11 +213,11 @@ public class EventService(TimetableContext context, RecurrenceService recurrence
         Title = timetableEvent.Title,
         Location = timetableEvent.Location,
         Description = timetableEvent.Description,
-        Start = Utc(start),
-        End = Utc(end),
+        Start = ToUtc(start),
+        End = ToUtc(end),
         RecurrenceRule = timetableEvent.RecurrenceRule,
         TimeZoneId = timetableEvent.TimeZoneId,
-        CreatedAt = Utc(timetableEvent.CreatedAt),
-        UpdatedAt = Utc(timetableEvent.UpdatedAt),
+        CreatedAt = ToUtc(timetableEvent.CreatedAt),
+        UpdatedAt = ToUtc(timetableEvent.UpdatedAt),
     };
 }
