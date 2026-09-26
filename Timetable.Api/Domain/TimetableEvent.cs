@@ -2,6 +2,8 @@ namespace Timetable.Api.Domain;
 
 public class TimetableEvent
 {
+    public const string DefaultTimeZoneId = "Asia/Hong_Kong";
+
     public int Id { get; private set; }
 
     public int UserId { get; private set; }
@@ -16,6 +18,10 @@ public class TimetableEvent
 
     public DateTime EndUtc { get; private set; }
 
+    public string? RecurrenceRule { get; private set; }
+
+    public string TimeZoneId { get; private set; } = DefaultTimeZoneId;
+
     public DateTime CreatedAt { get; private set; }
 
     public DateTime UpdatedAt { get; private set; }
@@ -28,7 +34,9 @@ public class TimetableEvent
         string? location,
         string? description,
         DateTime startUtc,
-        DateTime endUtc)
+        DateTime endUtc,
+        string? recurrenceRule,
+        string timeZoneId)
     {
         EnsureEndAfterStart(startUtc, endUtc);
 
@@ -41,6 +49,8 @@ public class TimetableEvent
             Description = description,
             StartUtc = startUtc,
             EndUtc = endUtc,
+            RecurrenceRule = recurrenceRule,
+            TimeZoneId = timeZoneId,
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -51,7 +61,9 @@ public class TimetableEvent
         string? location,
         string? description,
         DateTime startUtc,
-        DateTime endUtc)
+        DateTime endUtc,
+        string? recurrenceRule,
+        string timeZoneId)
     {
         EnsureEndAfterStart(startUtc, endUtc);
 
@@ -60,6 +72,8 @@ public class TimetableEvent
         Description = description;
         StartUtc = startUtc;
         EndUtc = endUtc;
+        RecurrenceRule = recurrenceRule;
+        TimeZoneId = timeZoneId;
         UpdatedAt = DateTime.UtcNow;
     }
 

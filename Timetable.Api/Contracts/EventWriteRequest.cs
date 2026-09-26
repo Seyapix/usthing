@@ -15,4 +15,8 @@ public class EventWriteRequest
     public DateTime Start { get; set; }
 
     public DateTime End { get; set; }
+
+    public string? RecurrenceRule { get; set; }
+
+    public string? TimeZoneId { get; set; }
 }

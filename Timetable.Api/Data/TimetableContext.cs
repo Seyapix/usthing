@@ -30,6 +30,9 @@ public class TimetableContext(DbContextOptions<TimetableContext> options) : DbCo
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.StartUtc).HasColumnName("start_utc");
             entity.Property(e => e.EndUtc).HasColumnName("end_utc");
+            entity.Property(e => e.RecurrenceRule).HasColumnName("recurrence_rule");
+            entity.Property(e => e.TimeZoneId).HasColumnName("time_zone_id").IsRequired()
+                .HasDefaultValue(TimetableEvent.DefaultTimeZoneId);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
             entity.HasIndex(e => new { e.UserId, e.StartUtc });

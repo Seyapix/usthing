@@ -24,6 +24,7 @@ var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)
 builder.Services.AddSingleton(jwt);
 builder.Services.AddSingleton<PasswordHasher<User>>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<RecurrenceService>();
 builder.Services.AddScoped<EventService>();
 builder.Services.AddScoped<DevelopmentUserSeeder>();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();

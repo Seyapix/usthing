@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Timetable.Api.Data;
 
@@ -10,9 +11,11 @@ using Timetable.Api.Data;
 namespace Timetable.Api.Data.Migrations
 {
     [DbContext(typeof(TimetableContext))]
-    partial class TimetableContextModelSnapshot : ModelSnapshot
+    [Migration("20260926151450_AddRecurrence")]
+    partial class AddRecurrence
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.11");

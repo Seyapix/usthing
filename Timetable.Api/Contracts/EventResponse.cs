@@ -14,6 +14,10 @@ public class EventResponse
 
     public DateTime End { get; init; }
 
+    public string? RecurrenceRule { get; init; }
+
+    public string TimeZoneId { get; init; } = "";
+
     public DateTime CreatedAt { get; init; }
 
     public DateTime UpdatedAt { get; init; }
