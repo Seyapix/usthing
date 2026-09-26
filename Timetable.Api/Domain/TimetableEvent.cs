@@ -20,6 +20,8 @@ public class TimetableEvent
 
     public string? RecurrenceRule { get; private set; }
 
+    public string? ExternalUid { get; private set; }
+
     public string TimeZoneId { get; private set; } = DefaultTimeZoneId;
 
     public DateTime CreatedAt { get; private set; }
@@ -36,7 +38,8 @@ public class TimetableEvent
         DateTime startUtc,
         DateTime endUtc,
         string? recurrenceRule,
-        string timeZoneId)
+        string timeZoneId,
+        string? externalUid = null)
     {
         EnsureEndAfterStart(startUtc, endUtc);
 
@@ -51,6 +54,7 @@ public class TimetableEvent
             EndUtc = endUtc,
             RecurrenceRule = recurrenceRule,
             TimeZoneId = timeZoneId,
+            ExternalUid = CleanUid(externalUid),
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -75,6 +79,17 @@ public class TimetableEvent
         RecurrenceRule = recurrenceRule;
         TimeZoneId = timeZoneId;
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void AssignExternalUid(string externalUid)
+    {
+        ExternalUid = CleanUid(externalUid);
+    }
+
+    private static string? CleanUid(string? externalUid)
+    {
+        var trimmed = externalUid?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? null : trimmed;
     }
 
     private static void EnsureEndAfterStart(DateTime startUtc, DateTime endUtc)

@@ -69,6 +69,53 @@ public class EventService(TimetableContext context, RecurrenceService recurrence
         return ToResponse(timetableEvent);
     }
 
+    public async Task<List<EventResponse>> Import(int callerId, string calendarText)
+    {
+        var imported = _recurrence.ReadEvents(calendarText);
+        if (imported.Count == 0)
+            throw new ArgumentException("The calendar has no events.");
+
+        var owned = await OwnedBy(callerId).ToListAsync();
+        var saved = new List<TimetableEvent>();
+        foreach (var row in imported)
+        {
+            var match = MatchImport(owned, row.Uid);
+            if (match is null)
+            {
+                match = TimetableEvent.Create(
+                    callerId,
+                    RequiredTitle(row.Title),
+                    Clean(row.Location),
+                    Clean(row.Description),
+                    row.StartUtc,
+                    row.EndUtc,
+                    row.RecurrenceRule,
+                    row.TimeZoneId,
+                    row.Uid);
+                _context.TimetableEvents.Add(match);
+                owned.Add(match);
+            }
+            else
+            {
+                match.Update(
+                    RequiredTitle(row.Title),
+                    Clean(row.Location),
+                    Clean(row.Description),
+                    row.StartUtc,
+                    row.EndUtc,
+                    row.RecurrenceRule,
+                    row.TimeZoneId);
+                if (match.ExternalUid is null && row.Uid is not null)
+                    match.AssignExternalUid(row.Uid);
+            }
+
+            saved.Add(match);
+        }
+
+        await _context.SaveChangesAsync();
+        return saved.Select(ToResponse).ToList();
+    }
+
     public async Task<string> Export(int callerId, DateTime from, DateTime to)
     {
         _recurrence.EnsureWindow(from, to);
@@ -103,6 +150,22 @@ public class EventService(TimetableContext context, RecurrenceService recurrence
             throw new ApiException(StatusCodes.Status404NotFound, "Event not found.");
 
         return timetableEvent;
+    }
+
+    // An export of a local event uses the numeric id as the uid until one is stored.
+    private static TimetableEvent? MatchImport(List<TimetableEvent> owned, string? uid)
+    {
+        if (string.IsNullOrEmpty(uid))
+            return null;
+
+        var byUid = owned.FirstOrDefault(x => x.ExternalUid == uid);
+        if (byUid is not null)
+            return byUid;
+
+        if (!int.TryParse(uid, out var id))
+            return null;
+
+        return owned.FirstOrDefault(x => x.Id == id && x.ExternalUid is null);
     }
 
     // Another user's row is not in this query, so a foreign id is a 404.

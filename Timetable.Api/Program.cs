@@ -7,8 +7,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
+using ModelContextProtocol.AspNetCore;
+
 using Timetable.Api.Data;
 using Timetable.Api.Domain;
+using Timetable.Api.Mcp;
 using Timetable.Api.Middleware;
 using Timetable.Api.Services;
 using Timetable.Api.Settings;
@@ -73,6 +76,9 @@ builder.Services.AddSwaggerGen(options =>
 });
 builder.Services.AddDbContext<TimetableContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("Timetable")));
+builder.Services.AddMcpServer()
+    .WithHttpTransport()
+    .WithTools<EventTools>();
 
 var app = builder.Build();
 
@@ -97,5 +103,6 @@ await using (var scope = app.Services.CreateAsyncScope())
 
 app.MapGet("/health", () => new { status = "ok" });
 app.MapControllers();
+app.MapMcp("/mcp").RequireAuthorization();
 
 app.Run();

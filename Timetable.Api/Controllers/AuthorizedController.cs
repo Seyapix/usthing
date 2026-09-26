@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-using Timetable.Api.Exceptions;
+using Timetable.Api.Services;
 
 namespace Timetable.Api.Controllers;
 
@@ -9,14 +9,5 @@ namespace Timetable.Api.Controllers;
 [ApiController]
 public abstract class AuthorizedController : ControllerBase
 {
-    protected int CallerId
-    {
-        get
-        {
-            if (!int.TryParse(User.Identity?.Name, out var userId))
-                throw new ApiException(StatusCodes.Status401Unauthorized, "Invalid token.");
-
-            return userId;
-        }
-    }
+    protected int CallerId => CurrentUser.Id(User);
 }

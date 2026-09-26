@@ -56,6 +56,31 @@ public class RecurrenceService
         return new CalendarSerializer().SerializeToString(calendar) ?? string.Empty;
     }
 
+    public IReadOnlyList<ImportedEvent> ReadEvents(string calendarText)
+    {
+        if (string.IsNullOrWhiteSpace(calendarText))
+            throw new ArgumentException("The calendar has no events.");
+
+        Calendar calendar;
+        try
+        {
+            calendar = Calendar.Load(calendarText) ?? throw new ArgumentException("The calendar could not be read.");
+        }
+        catch (Exception exception) when (exception is not ArgumentException)
+        {
+            throw new ArgumentException("The calendar could not be read.");
+        }
+
+        var events = new List<ImportedEvent>();
+        foreach (var calendarEvent in calendar.Events)
+        {
+            if (TryRead(calendarEvent) is { } imported)
+                events.Add(imported);
+        }
+
+        return events;
+    }
+
     public IReadOnlyList<(DateTime Start, DateTime End)> Occurrences(TimetableEvent timetableEvent, DateTime from, DateTime to)
     {
         if (timetableEvent.RecurrenceRule is null)
@@ -92,7 +117,7 @@ public class RecurrenceService
 
         var calendarEvent = new CalendarEvent
         {
-            Uid = timetableEvent.Id.ToString(),
+            Uid = timetableEvent.ExternalUid ?? timetableEvent.Id.ToString(),
             Summary = timetableEvent.Title,
             Location = timetableEvent.Location,
             Description = timetableEvent.Description,
@@ -116,5 +141,45 @@ public class RecurrenceService
         return new CalDateTime(utc.Year, utc.Month, utc.Day, utc.Hour, utc.Minute, utc.Second, "UTC");
     }
 
+    private ImportedEvent? TryRead(CalendarEvent calendarEvent)
+    {
+        var start = calendarEvent.DtStart;
+        if (start is null)
+            return null;
+
+        DateTime endUtc;
+        if (calendarEvent.DtEnd is { } end)
+            endUtc = Utc(end.AsUtc);
+        else if (calendarEvent.Duration is { } duration)
+            endUtc = Utc(start.AsUtc).Add(duration.ToTimeSpan(start));
+        else
+            return null;
+
+        var rule = calendarEvent.RecurrenceRules.FirstOrDefault()?.ToString();
+        if (rule is not null && rule.StartsWith("RRULE:", StringComparison.OrdinalIgnoreCase))
+            rule = rule["RRULE:".Length..];
+
+        var uid = calendarEvent.Uid?.Trim();
+        return new ImportedEvent(
+            string.IsNullOrEmpty(uid) ? null : uid,
+            calendarEvent.Summary ?? "",
+            calendarEvent.Location,
+            calendarEvent.Description,
+            Utc(start.AsUtc),
+            endUtc,
+            NormalizeRule(rule),
+            NormalizeTimeZoneId(start.TzId));
+    }
+
     private static DateTime Utc(DateTime value) => DateTime.SpecifyKind(value, DateTimeKind.Utc);
+
+    public sealed record ImportedEvent(
+        string? Uid,
+        string Title,
+        string? Location,
+        string? Description,
+        DateTime StartUtc,
+        DateTime EndUtc,
+        string? RecurrenceRule,
+        string TimeZoneId);
 }

@@ -26,6 +26,15 @@ public class EventsController(EventService eventService) : AuthorizedController
         return Content(calendar, "text/calendar; charset=utf-8");
     }
 
+    /// <summary>Import an iCalendar file. A uid this user already has is updated.</summary>
+    [HttpPost("import.ics")]
+    public async Task<List<EventResponse>> Import()
+    {
+        using var reader = new StreamReader(Request.Body);
+        var body = await reader.ReadToEndAsync();
+        return await _eventService.Import(CallerId, body);
+    }
+
     /// <summary>Get one of the caller's events. A recurring event is returned as the series.</summary>
     [HttpGet("{id:int}")]
     public async Task<EventResponse> Get(int id) =>

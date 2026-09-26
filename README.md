@@ -12,7 +12,7 @@ The API listens on port 8080. `GET /health` returns `{"status":"ok"}`.
 
 ## Data
 
-SQLite stores two tables, `users` and `timetable_events`. Each event belongs to one user. Event times are UTC. A recurring event is one row: `recurrence_rule` holds the rule body (`FREQ=WEEKLY;BYDAY=MO`) and `time_zone_id` says which clock that rule uses. The default zone is `Asia/Hong_Kong`. Locally the file is `timetable.db` in the working directory. In Docker the file is `/data/timetable.db` on the `timetable-data` volume.
+SQLite stores two tables, `users` and `timetable_events`. Each event belongs to one user. Event times are UTC. A recurring event is one row: `recurrence_rule` holds the rule body (`FREQ=WEEKLY;BYDAY=MO`) and `time_zone_id` says which clock that rule uses. The default zone is `Asia/Hong_Kong`. An imported event also stores the calendar uid, so a later import updates that row. Locally the file is `timetable.db` in the working directory. In Docker the file is `/data/timetable.db` on the `timetable-data` volume.
 
 ## Events
 
@@ -42,10 +42,38 @@ curl -s "http://localhost:8080/v1/events?from=2026-09-14T00:00:00Z&to=2026-09-28
 
 That window contains two Mondays. Each item uses the series id and that Monday's start and end.
 
+Bob cannot read Alice's event. `GET /v1/events/{id}` with his token returns 404, and his list is empty.
+
+```bash
+curl -s http://localhost:8080/v1/events/1 \
+  -H "Authorization: Bearer $BOB"
+```
+
 `GET /v1/events/export.ics?from=&to=` writes one `VEVENT` per series, including its rule. `from` and `to` are required, with the same 366-day limit.
 
 ```bash
 curl -s "http://localhost:8080/v1/events/export.ics?from=2026-09-14T00:00:00Z&to=2026-09-28T00:00:00Z" \
   -H "Authorization: Bearer $TOKEN" \
   -o timetable.ics
+```
+
+`POST /v1/events/import.ics` reads that file. A uid this user already has is updated, so posting it again does not add a row.
+
+```bash
+curl -s -X POST http://localhost:8080/v1/events/import.ics \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: text/calendar' \
+  --data-binary @timetable.ics
+```
+
+## MCP
+
+`POST /mcp` uses the same bearer token. Tools: `list_events`, `create_event`, `update_event`, `delete_event`.
+
+```bash
+curl -s -X POST http://localhost:8080/mcp \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_events","arguments":{}}}'
 ```
