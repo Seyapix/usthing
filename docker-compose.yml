@@ -1,0 +1,12 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      ConnectionStrings__Timetable: Data Source=/data/timetable.db
+    volumes:
+      - timetable-data:/data
+
+volumes:
+  timetable-data:
