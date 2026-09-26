@@ -16,6 +16,7 @@ public class TimetableContext(DbContextOptions<TimetableContext> options) : DbCo
             entity.ToTable("users");
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Username).HasColumnName("username").IsRequired();
+            entity.Property(e => e.PasswordHash).HasColumnName("password_hash").IsRequired();
             entity.HasIndex(e => e.Username).IsUnique();
         });
 
